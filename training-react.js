@@ -31,7 +31,7 @@ class Component extends React.Component {
                 this.setState({name: "button 2", age: 0})
             }}>change name button</button>
             <div> area Component</div>
-            {this.state.name === 0 || <Component2 propName={this.state.name} />}
+            {this.state.name > 0 && <Component2 propName={this.state.name} />}
             </div>
         )
     }
@@ -51,7 +51,6 @@ function Component2(props) {
         {name: "user 2", age: 2},
         {name: "user 3", age: 3}
     ]);
-    const [age, setAge] = React.useState(10);
 
     React.useEffect(() => {
         console.log("log by useEffect")
@@ -63,19 +62,18 @@ function Component2(props) {
     return (
         <div>
             here is component2
-        <span>{users.map((user,index) => {
-            return (
-                <User key={user.name} name={user.name} age={user.age} />
-            )
-        })}</span>
-        <button
-        onClick={() => {
-            users.pop();
-            users.push({name:"user 4", age:4})
-            setUsers([...users])
-        }}
-        >add user</button>
-        
+            <span>{users.map((user,index) => {
+                return (
+                    <User key={user.name} name={user.name} age={user.age} />
+                )
+            })}</span>
+            <button
+            onClick={() => {
+                users.pop();
+                users.push({name:"user 4", age:4})
+                setUsers([...users])
+            }}
+            >add user</button>
         </div>
     )
 }
