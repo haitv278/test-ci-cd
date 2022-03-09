@@ -238,7 +238,7 @@ const Test = () => {
 }
 // props: {name: "button 3"}
 ReactDOM.render(<div>
-    <Member />
+    <TranferMember />
     </div>, divTag);
 
 
