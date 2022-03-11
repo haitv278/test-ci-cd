@@ -78,11 +78,25 @@ function Component2(props) {
     )
 }
 
+const SORT = {
+    NO: 0,
+    UP: 1,
+    DOWN: 2,
+}
+const useCount =() => {
+    const [count, setCount] = React.useState(1);
+    const increaseCount = () => setCount(count+1)
+    return {
+        count, 
+        increaseCount
+    }
+}
 const Member = (props) => {
-    const {name, age, handleTranfer, renderExtend} = props;
+    const {name, age, handleTranfer, renderExtend, handleEdit} = props;
     return <div>
         <span>name: {name}</span> -<span>age: {age}</span>
         <button onClick={() => handleTranfer()}>tranfer</button>
+        <button onClick={() => handleEdit()}>edit</button>
         {renderExtend && renderExtend()}
     </div>
 }
@@ -90,6 +104,24 @@ const INIT_DATA = {
     name: "",
     age: "",
     classType: "react"
+}
+
+const CountContext = React.createContext();
+
+const App = () => {
+    const {count, increaseCount} = useCount()
+    return (
+        <CountContext.Provider value={{
+            count,
+            increaseCount,
+        }}>
+            <TranferMember></TranferMember>
+        </CountContext.Provider>
+        
+
+        
+    )
+    
 }
 const TranferMember = () => {
 
@@ -101,6 +133,7 @@ const TranferMember = () => {
         }
         return members.reactMembers
     });
+    const context = React.useContext(CountContext);
     // useState có thể nhận vào 1 function, giá trị mà function này return về sẽ dùng để khởi tạo state
    
     const [javaMembers, setJavaMember] = React.useState(() => {
@@ -160,36 +193,149 @@ const TranferMember = () => {
             })
     }
    const handleSubmit = () => {
-        if (formData.classType === 'react') {
-            reactMembers.push(formData);
-            setReactMember([...reactMembers])
-        } else {
-            javaMembers.push(formData)
-            setJavaMember([...javaMembers])
+       if (formData.isEdit) {
+            const {orginClassType, index} = formData;
+            if (orginClassType !== formData.classType) {
+                if (formData.classType === 'react') {
+                    javaMembers.splice(index, 1);
+                    setJavaMember([...javaMembers]);
+                    reactMembers.push(formData)
+                    setReactMember([...reactMembers])
+                } else {
+                    reactMembers.splice(index, 1);
+                    setReactMember([...reactMembers]);
+                    javaMembers.push(formData)
+                    setJavaMember([...javaMembers])
+                }
+            } else {
+                if (formData.classType === 'react') {
+                    reactMembers[index] = formData;
+                    setReactMember([...reactMembers])
+                } else {
+                    javaMembers[index] = formData;
+                    setJavaMember([...javaMembers])
+                }
+            }
+       } else {
+            if (formData.classType === 'react') {
+                reactMembers.push(formData);
+                setReactMember([...reactMembers])
+            } else {
+                javaMembers.push(formData)
+                setJavaMember([...javaMembers])
+            }
+       }
+       setFormData(INIT_DATA)
+
+        
+   }
+   const [searchName, setSearchName] = React.useState("");
+   const [sortAge, setSortAge] = React.useState(SORT.NO);
+
+   const getUsers = (list) => {
+       console.log("getting users from: ", list);
+       let res = [...list];
+       if (searchName) {
+            res = res.filter((el) =>  el.name.includes(searchName))
+       }
+       if (sortAge !== SORT.NO) {
+            res.sort((a, b) => {
+                if (sortAge === SORT.UP) {
+                    return parseInt(a.age) - parseInt(b.age)
+                } 
+                 if (sortAge === SORT.DOWN) {
+                    return parseInt(b.age) - parseInt(a.age)
+                }
+                
+            })
+       }
+       return res;
+   }
+   const reactMemberToRender = React.useMemo(() => getUsers(reactMembers), [reactMembers, sortAge]);
+   const javaMemberToRender = React.useMemo(() => getUsers(javaMembers), [javaMembers, sortAge]);
+   
+   const getSortText = () => {
+        if (sortAge === SORT.NO) {
+            return "no"
         }
-        setFormData(INIT_DATA)
+        if (sortAge === SORT.UP) {
+            return "up"
+        }
+        return "down"
    }
 
+   const getSortTextCallback = React.useCallback(() => getSortText(), [sortAge])
+
+   const handleSort = () => {
+       if (sortAge  === SORT.DOWN) {
+           setSortAge(SORT.NO)
+       }  else if (sortAge  === SORT.NO) {
+            setSortAge(SORT.UP)
+       } else {
+            setSortAge(SORT.DOWN)
+       }
+   }
+   const onEditReactMember = (index) => {
+       setFormData({
+           ...reactMembers[index],
+           isEdit: true,
+           index: index,
+           orginClassType:  reactMembers[index].classType,
+        })
+        inputNameRef.current.focus();
+   }
+   const onEditJavaMember = (index) => {
+        setFormData({
+            ...javaMembers[index],
+            isEdit: true,
+            index: index,
+            orginClassType: javaMembers[index].classType,
+        })
+        context.increaseCount() ;
+
+    }
+
+    let inputNameRef = React.useRef();
+    let testRef = React.useRef();
+    const SortTitle = (props) => {
+        React.useEffect(() => {
+            console.log("fire by getSorttext");
+        }, [props.getSortText])
+        return (
+            <React.Fragment>sort: {props.getSortText()}</React.Fragment>
+        )
+    }
     return (
         <div>
         <h1>list member of React class</h1>
-        {reactMembers.length > 0 ? reactMembers.map((user, index) => {
+        search name: <input
+            value={searchName}
+            onChange={(e) => setSearchName(e.target.value)}
+            ></input>
+            <br />
+            <button
+                onClick={() => handleSort()}
+            ><SortTitle getSortText={getSortTextCallback}/></button>
+        {reactMembers.length > 0 ? reactMemberToRender.map((user, index) => {
             return <Member name={user.name} age={user.age}
             key={index}
-            handleTranfer={() => tranferReactToJavaMember(index)} 
+            handleTranfer={() => tranferReactToJavaMember(index)}
+            handleEdit={() => onEditReactMember(index)} 
             //   renderExtend={() => <span>hello by react</span> 
             />
         }) : "empty class"}
         <h1>list member of Java class</h1>
-        {javaMembers.length > 0 ?javaMembers.map((user,index) => {
+        {javaMembers.length > 0 ? javaMemberToRender.map((user,index) => {
             return <Member name={user.name} age={user.age}
             key={index}
              handleTranfer={() => tranferJavaToReactMember(index)}
+            handleEdit={() => onEditJavaMember(index)} 
+
             //   renderExtend={() => <span>hello by java</span>}/>
 
              />
         }) : "empty class" }
-        <h1>add member</h1>
+        <h1>{formData.isEdit? "edit": "add"} member</h1>
         <form
             onSubmit={(e) => {
                 e.preventDefault();
@@ -203,6 +349,8 @@ const TranferMember = () => {
             <label>name</label>
             <input 
             name="name"
+            ref={inputNameRef}
+
             value={formData.name}
             onChange={(e) => handleInput(e)}></input>
             {" --- "}
@@ -220,8 +368,15 @@ const TranferMember = () => {
                 <option value="java">Java</option>
             </select>
             <button >submit</button>
+            <button type="button" onClick={() => setFormData(INIT_DATA)}>cancel</button>
+
             {/* checkme<input type="checkbox" name="testCheckbox" /> */}
         </form>
+        {/* {count.map((el) => <div>{el}</div>)} */
+        }
+        context.count: {context.count}
+        <br />
+        TestRef<TestRef  ></TestRef>
         </div>
     )
 
@@ -236,9 +391,75 @@ const Test = () => {
     <button onClick={() => setOff(!off)}>change</button>
     </div>
 }
+const Input = () => {
+    const context = React.useContext(CountContext)
+    return <div>
+        
+        <input value={context.count} ></input>
+        <button onClick={context.increaseCount}>increaseCount from Input Component</button>
+        </div>
+}
+class TestRef extends React.Component {
+    constructor() {
+        super();
+        this.inputRef = React.createRef();
+        // this.state = { count: 1}
+    }
+    static contextType = CountContext;
+    componentDidMount() {
+        // this.inputRef.current.focus()
+    }
+    handleFocus() {
+        this.inputRef.current.focus()
+    }
+    // increaseCount = () => {
+    //     this.setState({count: this.state.count+1})
+    // }
+    render()  {
+        return (
+            <div>
+                <Input />
+                <br />
+                <h1>count from TestRef: {this.context.count}</h1>
+                <button onClick={this.context.increaseCount}>increase Count</button>
+            </div>
+        )
+    }
+    
+}
+
+class ErrorBounderies extends React.Component {
+    constructor() {
+        super();
+        this.state={ hasError: false}
+    }
+    static getDerivedStateFromError(error) {
+        console.log(error);
+        return {
+            hasError: true,
+            error,
+        }
+    }
+    componentDidCatch (error, info) {
+        // sendErrorToServer(error, info)
+    }
+    render() {
+        if (this.state.hasError) {
+            return <div>something wrong: {this.state.error.toString()}</div>
+        }
+        return (
+            <div>
+                from Error ErrorBounderies 
+                {this.props.children}
+            </div>
+        )
+    }
+}
 // props: {name: "button 3"}
 ReactDOM.render(<div>
-    <TranferMember />
+    <ErrorBounderies>
+        <App />
+    </ErrorBounderies>
     </div>, divTag);
 
 
